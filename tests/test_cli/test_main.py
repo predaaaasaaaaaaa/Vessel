@@ -27,13 +27,15 @@ def test_vessel_create_wizard(tmp_path):
             assert "class LeadGenVesselOutput(BaseModel):" in content
             assert "class LeadGenVessel(BaseVessel[" in content
             assert '"""\n    Searches the web for SaaS leads and verifies their emails.\n    """' in content
+            assert 'if __name__ == "__main__":' in content
+            assert 'json.loads(sys.argv[1])' in content
 
         with open("LeadGenVessel_SKILL.md", "r") as f:
             md_content = f.read()
             assert "# Skill: LeadGenVessel" in md_content
             assert "Searches the web for SaaS leads and verifies their emails." in md_content
-            assert "## Deterministic Execution" in md_content
-            assert "Do not attempt to write custom scripts to perform this task." in md_content
+            assert "## Agent Instructions: How to Use This Skill" in md_content
+            assert "python leadgenvessel.py '<json_payload>'" in md_content
 
 def test_vessel_test_command(tmp_path):
     """Test that the CLI can dynamically load and execute a Vessel file."""

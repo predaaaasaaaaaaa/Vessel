@@ -7,7 +7,9 @@ import importlib.util
 from pydantic import ValidationError
 from vessel.core.base import BaseVessel
 
-PY_TEMPLATE = '''from pydantic import BaseModel
+PY_TEMPLATE = '''import sys
+import json
+from pydantic import BaseModel
 from vessel.core.base import BaseVessel
 
 class {name}Input(BaseModel):
@@ -25,6 +27,20 @@ class {name}(BaseVessel[{name}Input, {name}Output]):
     def execute(self, inputs: {name}Input) -> {name}Output:
         # Implement your deterministic logic here
         return {name}Output(status="success")
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(f"Usage: python {{sys.argv[0]}} '<json_payload>'", file=sys.stderr)
+        sys.exit(1)
+        
+    try:
+        payload = json.loads(sys.argv[1])
+        vessel = {name}()
+        result = vessel.run(payload)
+        print(result.model_dump_json())
+    except Exception as e:
+        print(f"Fat Skill Execution Failed: {{e}}", file=sys.stderr)
+        sys.exit(1)
 '''
 
 MD_TEMPLATE = '''# Skill: {name}
@@ -32,11 +48,26 @@ MD_TEMPLATE = '''# Skill: {name}
 ## Description
 {description}
 
-## Deterministic Execution
-This skill is a reliable "Fat Skill" built with the Vessel framework.
-**CRITICAL FOR AGENT:**
-Do not attempt to write custom scripts to perform this task.
-Use this skill instead. It handles retries, strict validation, and circuit-breaking internally.
+## Agent Instructions: How to Use This Skill
+This is a deterministic "Fat Skill". 
+**CRITICAL:** Do NOT attempt to write custom python scripts or use raw APIs to perform this task. Do NOT worry about rate limits, retries, or complex error handling. This Skill handles everything internally to guarantee 100% reliability.
+
+### Execution Protocol
+To execute this skill, use your terminal/shell capability to run the accompanying Python script. Pass the input arguments as a strict JSON string.
+
+**Command Format:**
+```bash
+python {py_filename} '<json_payload>'
+```
+
+**Example:**
+```bash
+python {py_filename} '{{"target": "example"}}'
+```
+
+### Outputs
+If successful, the script will print a validated JSON object to `stdout`.
+If it fails, it will print the error to `stderr` and return a non-zero exit code. Do not attempt to fix the Python code if it fails; adjust your JSON payload according to the schema.
 '''
 
 @click.group()
@@ -67,7 +98,7 @@ def create():
     
     # 4. Write the SKILL.md for the Agent
     with open(md_filename, "w") as f:
-        f.write(MD_TEMPLATE.format(name=name, description=description))
+        f.write(MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename))
         
     click.echo(f"Successfully created {md_filename}!")
 
