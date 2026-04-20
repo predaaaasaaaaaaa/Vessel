@@ -14,9 +14,9 @@ def test_vessel_create_wizard(tmp_path):
         result = runner.invoke(cli, ["create"], input="LeadGenVessel\nSearches the web for SaaS leads and verifies their emails.\n")
         
         assert result.exit_code == 0
-        assert "Welcome to the Vessel Creator Wizard!" in result.output
-        assert "Successfully created leadgenvessel.py!" in result.output
-        assert "Successfully created LeadGenVessel_SKILL.md!" in result.output
+        assert "The Next.js of Agentic Skills" in result.output
+        assert "Created leadgenvessel.py" in result.output
+        assert "Created LeadGenVessel_SKILL.md" in result.output
         
         assert os.path.exists("leadgenvessel.py")
         assert os.path.exists("LeadGenVessel_SKILL.md")
@@ -64,5 +64,5 @@ class DummyVessel(BaseVessel[DummyInput, DummyOutput]):
         
         # 3. Verify it loaded, ran, and output the correct result
         assert result.exit_code == 0
-        assert "Executing DummyVessel" in result.output
+        assert "Execution Result (dummyvessel.py)" in result.output
         assert "Hello World" in result.output

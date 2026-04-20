@@ -10,6 +10,7 @@ dependencies = [
     "loguru>=0.7.3",
     "click>=8.1.7",
     "tenacity>=9.0.0",
+    "rich>=15.0.0",
 ]
 
 [project.scripts]

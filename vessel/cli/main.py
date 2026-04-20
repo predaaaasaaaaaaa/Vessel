@@ -7,6 +7,20 @@ import importlib.util
 from pydantic import ValidationError
 from vessel.core.base import BaseVessel
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+from rich.syntax import Syntax
+from rich.prompt import Prompt
+
+# The Monochromatic Purple Theme Hex Palette
+PRIMARY = "#9d4edd"    # Deep Electric Purple (Logos, Borders)
+SECONDARY = "#c77dff"  # Medium Amethyst (Headers, Subtitles)
+PROMPT = "#e0aaff"     # Light Lavender (Questions, Prompts)
+MUTED = "#5a189a"      # Dark Violet (Secondary Text, Dividers)
+
+console = Console()
+
 PY_TEMPLATE = '''import sys
 import json
 from pydantic import BaseModel
@@ -70,6 +84,18 @@ If successful, the script will print a validated JSON object to `stdout`.
 If it fails, it will print the error to `stderr` and return a non-zero exit code. Do not attempt to fix the Python code if it fails; adjust your JSON payload according to the schema.
 '''
 
+def print_logo():
+    logo_art = """
+ ██╗   ██╗ ███████╗ ███████╗ ███████╗ ███████╗ ██╗     
+ ██║   ██║ ██╔════╝ ██╔════╝ ██╔════╝ ██╔════╝ ██║     
+ ██║   ██║ █████╗   ███████╗ ███████╗ █████╗   ██║     
+ ╚██╗ ██╔╝ ██╔══╝   ╚════██║ ╚════██║ ██╔══╝   ██║     
+  ╚████╔╝  ███████╗ ███████║ ███████║ ███████╗ ███████╗
+   ╚═══╝   ╚══════╝ ╚══════╝ ╚══════╝ ╚══════╝ ╚══════╝
+"""
+    console.print(Text(logo_art, style=f"bold {PRIMARY}"))
+    console.print(f"[{SECONDARY}]   The Next.js of Agentic Skills[/{SECONDARY}]\n")
+
 @click.group()
 def cli():
     """Vessel CLI - The Next.js of Agentic Skills."""
@@ -78,13 +104,17 @@ def cli():
 @cli.command()
 def create():
     """Interactive wizard to create a new Fat Skill."""
-    click.echo("Welcome to the Vessel Creator Wizard!")
+    print_logo()
     
     # 1. Ask for the Name
-    name = click.prompt("What do you want to name this Vessel? (e.g., LeadGenVessel)")
+    console.print(f"[{PROMPT}]?[/{PROMPT}] [{SECONDARY}]What do you want to name this Vessel? (e.g., LeadGenVessel)[/{SECONDARY}]")
+    name = Prompt.ask(f"[{MUTED}]❯[/{MUTED}] ")
+    console.print("")
     
     # 2. Ask for the Description
-    description = click.prompt("Describe what this Vessel does")
+    console.print(f"[{PROMPT}]?[/{PROMPT}] [{SECONDARY}]Describe what this Vessel does[/{SECONDARY}]")
+    description = Prompt.ask(f"[{MUTED}]❯[/{MUTED}] ")
+    console.print("")
     
     # Generate filenames
     py_filename = f"{name.lower()}.py"
@@ -94,13 +124,14 @@ def create():
     with open(py_filename, "w") as f:
         f.write(PY_TEMPLATE.format(name=name, description=description))
         
-    click.echo(f"Successfully created {py_filename}!")
+    console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {py_filename}[/{PROMPT}]")
     
     # 4. Write the SKILL.md for the Agent
     with open(md_filename, "w") as f:
         f.write(MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename))
         
-    click.echo(f"Successfully created {md_filename}!")
+    console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {md_filename}[/{PROMPT}]")
+    console.print(f"\n[{SECONDARY}]Vessel ready for Agentic deployment.[/{SECONDARY}]\n")
 
 @cli.command()
 @click.argument("filepath")
@@ -108,38 +139,38 @@ def create():
 def test(filepath, payload):
     """Dynamically load and test a Vessel file."""
     if not os.path.exists(filepath):
-        click.echo(f"Error: File {filepath} not found.", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error: File {filepath} not found.[/{PROMPT}]")
         sys.exit(1)
         
     if not payload:
-        payload = click.prompt("Enter JSON payload for the Vessel")
+        console.print(f"[{PROMPT}]?[/{PROMPT}] [{SECONDARY}]Enter JSON payload for the Vessel[/{SECONDARY}]")
+        payload = Prompt.ask(f"[{MUTED}]❯[/{MUTED}] ")
+        console.print("")
         
     try:
         parsed_payload = json.loads(payload)
     except json.JSONDecodeError as e:
-        click.echo(f"Error: Invalid JSON payload. {e}", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error: Invalid JSON payload. {e}[/{PROMPT}]")
         sys.exit(1)
 
     # Dynamically load the module
     module_name = "dynamic_vessel_module"
     spec = importlib.util.spec_from_file_location(module_name, filepath)
     if spec is None or spec.loader is None:
-        click.echo(f"Error: Could not load module from {filepath}", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error: Could not load module from {filepath}[/{PROMPT}]")
         sys.exit(1)
         
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     
-    # Add the directory of the filepath to sys.path so relative imports in the vessel work
     sys.path.insert(0, os.path.dirname(os.path.abspath(filepath)))
     
     try:
         spec.loader.exec_module(module)
     except Exception as e:
-        click.echo(f"Error executing module: {e}", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error executing module: {e}[/{PROMPT}]")
         sys.exit(1)
         
-    # Find the BaseVessel subclass
     vessel_class = None
     for name, obj in inspect.getmembers(module):
         if inspect.isclass(obj) and issubclass(obj, BaseVessel) and obj is not BaseVessel:
@@ -147,21 +178,28 @@ def test(filepath, payload):
             break
             
     if not vessel_class:
-        click.echo(f"Error: No BaseVessel subclass found in {filepath}", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error: No BaseVessel subclass found in {filepath}[/{PROMPT}]")
         sys.exit(1)
         
-    click.echo(f"Executing {vessel_class.__name__} from {filepath}...")
     vessel_instance = vessel_class()
     
     try:
         result = vessel_instance.run(parsed_payload)
-        click.echo("\n--- RESULT ---")
-        click.echo(result.model_dump_json(indent=2))
+        json_result = result.model_dump_json(indent=2)
+        syntax = Syntax(json_result, "json", theme="dracula", background_color="default")
+        result_panel = Panel(
+            syntax, 
+            title=f"[{SECONDARY}]Execution Result ({os.path.basename(filepath)})[/{SECONDARY}]", 
+            title_align="left",
+            border_style=MUTED, 
+            padding=(1, 2)
+        )
+        console.print(result_panel)
     except ValidationError as e:
-        click.echo(f"\n--- VALIDATION ERROR ---\n{e}", err=True)
+        console.print(f"\n[{PRIMARY}]✖ VALIDATION ERROR[/{PRIMARY}]\n[{PROMPT}]{e}[/{PROMPT}]")
         sys.exit(1)
     except Exception as e:
-        click.echo(f"\n--- EXECUTION ERROR ---\n{e}", err=True)
+        console.print(f"\n[{PRIMARY}]✖ EXECUTION ERROR[/{PRIMARY}]\n[{PROMPT}]{e}[/{PROMPT}]")
         sys.exit(1)
 
 @cli.command()
@@ -175,10 +213,10 @@ def serve(directory):
     try:
         server.load_vessels_from_directory(directory)
     except Exception as e:
-        click.echo(f"Error loading vessels: {e}", err=True)
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error loading vessels: {e}[/{PROMPT}]")
         sys.exit(1)
         
-    click.echo(f"Starting Vessel MCP Server on stdio...", err=True)
+    console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Starting Vessel MCP Server on stdio...[/{PROMPT}]")
     asyncio.run(server.run_stdio())
 
 if __name__ == "__main__":
