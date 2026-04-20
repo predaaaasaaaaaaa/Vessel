@@ -57,6 +57,20 @@ if __name__ == "__main__":
         sys.exit(1)
 '''
 
+TEST_TEMPLATE = '''from {module_name} import {name}
+
+def test_{module_name}():
+    """
+    Automated test suite for {name}.
+    Required for the Vessel Sandbox CI/CD pipeline.
+    """
+    vessel = {name}()
+    # Add your deterministic assertions here
+    # result = vessel.run({{"key": "value"}})
+    # assert result.status == "success"
+    pass
+'''
+
 MD_TEMPLATE = '''# Skill: {name}
 
 ## Description
@@ -82,6 +96,10 @@ python {py_filename} '{{"target": "example"}}'
 ### Outputs
 If successful, the script will print a validated JSON object to `stdout`.
 If it fails, it will print the error to `stderr` and return a non-zero exit code. Do not attempt to fix the Python code if it fails; adjust your JSON payload according to the schema.
+
+### 🔄 Self-Healing Protocol
+If this skill repeatedly returns a `Fat Skill Execution Failed` error due to an outdated API or logic bug, **do not attempt to brute-force the payload.**
+Instead, you are authorized to update this skill's logic. Analyze the Python script (`{py_filename}`), formulate a fix, and execute the `VesselUpdater` skill to apply and validate your patch. The sandbox will run the tests in `{test_filename}` to confirm your fix.
 '''
 
 def print_logo():
@@ -117,8 +135,10 @@ def create():
     console.print("")
     
     # Generate filenames
-    py_filename = f"{name.lower()}.py"
+    module_name = name.lower()
+    py_filename = f"{module_name}.py"
     md_filename = f"{name}_SKILL.md"
+    test_filename = f"test_{module_name}.py"
     
     # 3. Write the robust Python boilerplate
     with open(py_filename, "w") as f:
@@ -126,9 +146,15 @@ def create():
         
     console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {py_filename}[/{PROMPT}]")
     
-    # 4. Write the SKILL.md for the Agent
+    # 4. Write the automated test suite
+    with open(test_filename, "w") as f:
+        f.write(TEST_TEMPLATE.format(name=name, module_name=module_name))
+        
+    console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {test_filename}[/{PROMPT}]")
+    
+    # 5. Write the SKILL.md for the Agent
     with open(md_filename, "w") as f:
-        f.write(MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename))
+        f.write(MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename, test_filename=test_filename))
         
     console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {md_filename}[/{PROMPT}]")
     console.print(f"\n[{SECONDARY}]Vessel ready for Agentic deployment.[/{SECONDARY}]\n")
