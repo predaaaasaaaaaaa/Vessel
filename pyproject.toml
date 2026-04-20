@@ -29,3 +29,10 @@ target-version = "py311"
 
 [tool.mypy]
 strict = true
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
