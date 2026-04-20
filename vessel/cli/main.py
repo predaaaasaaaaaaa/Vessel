@@ -1,5 +1,11 @@
 import os
+import sys
+import json
 import click
+import inspect
+import importlib.util
+from pydantic import ValidationError
+from vessel.core.base import BaseVessel
 
 PY_TEMPLATE = '''from pydantic import BaseModel
 from vessel.core.base import BaseVessel
@@ -64,6 +70,68 @@ def create():
         f.write(MD_TEMPLATE.format(name=name, description=description))
         
     click.echo(f"Successfully created {md_filename}!")
+
+@cli.command()
+@click.argument("filepath")
+@click.argument("payload", required=False)
+def test(filepath, payload):
+    """Dynamically load and test a Vessel file."""
+    if not os.path.exists(filepath):
+        click.echo(f"Error: File {filepath} not found.", err=True)
+        sys.exit(1)
+        
+    if not payload:
+        payload = click.prompt("Enter JSON payload for the Vessel")
+        
+    try:
+        parsed_payload = json.loads(payload)
+    except json.JSONDecodeError as e:
+        click.echo(f"Error: Invalid JSON payload. {e}", err=True)
+        sys.exit(1)
+
+    # Dynamically load the module
+    module_name = "dynamic_vessel_module"
+    spec = importlib.util.spec_from_file_location(module_name, filepath)
+    if spec is None or spec.loader is None:
+        click.echo(f"Error: Could not load module from {filepath}", err=True)
+        sys.exit(1)
+        
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    
+    # Add the directory of the filepath to sys.path so relative imports in the vessel work
+    sys.path.insert(0, os.path.dirname(os.path.abspath(filepath)))
+    
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        click.echo(f"Error executing module: {e}", err=True)
+        sys.exit(1)
+        
+    # Find the BaseVessel subclass
+    vessel_class = None
+    for name, obj in inspect.getmembers(module):
+        if inspect.isclass(obj) and issubclass(obj, BaseVessel) and obj is not BaseVessel:
+            vessel_class = obj
+            break
+            
+    if not vessel_class:
+        click.echo(f"Error: No BaseVessel subclass found in {filepath}", err=True)
+        sys.exit(1)
+        
+    click.echo(f"Executing {vessel_class.__name__} from {filepath}...")
+    vessel_instance = vessel_class()
+    
+    try:
+        result = vessel_instance.run(parsed_payload)
+        click.echo("\n--- RESULT ---")
+        click.echo(result.model_dump_json(indent=2))
+    except ValidationError as e:
+        click.echo(f"\n--- VALIDATION ERROR ---\n{e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\n--- EXECUTION ERROR ---\n{e}", err=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     cli()

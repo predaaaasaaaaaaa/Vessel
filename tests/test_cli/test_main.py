@@ -1,4 +1,5 @@
 import os
+import json
 from click.testing import CliRunner
 from vessel.cli.main import cli
 
@@ -9,24 +10,17 @@ def test_vessel_create_wizard(tmp_path):
     """
     runner = CliRunner()
     
-    # We change the working directory to a temporary path so we don't litter the repo
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        # We simulate the user typing answers to the prompts:
-        # 1. "LeadGenVessel" (The name of the skill)
-        # 2. "Searches the web for SaaS leads and verifies their emails." (The description)
         result = runner.invoke(cli, ["create"], input="LeadGenVessel\nSearches the web for SaaS leads and verifies their emails.\n")
         
-        # 1. Verify the command ran successfully
         assert result.exit_code == 0
         assert "Welcome to the Vessel Creator Wizard!" in result.output
         assert "Successfully created leadgenvessel.py!" in result.output
         assert "Successfully created LeadGenVessel_SKILL.md!" in result.output
         
-        # 2. Verify the files were actually created
         assert os.path.exists("leadgenvessel.py")
         assert os.path.exists("LeadGenVessel_SKILL.md")
         
-        # 3. Verify the generated Python code contains the correct structure
         with open("leadgenvessel.py", "r") as f:
             content = f.read()
             assert "class LeadGenVesselInput(BaseModel):" in content
@@ -34,10 +28,39 @@ def test_vessel_create_wizard(tmp_path):
             assert "class LeadGenVessel(BaseVessel[" in content
             assert '"""\n    Searches the web for SaaS leads and verifies their emails.\n    """' in content
 
-        # 4. Verify the generated Markdown file is ready for the Agent
         with open("LeadGenVessel_SKILL.md", "r") as f:
             md_content = f.read()
             assert "# Skill: LeadGenVessel" in md_content
             assert "Searches the web for SaaS leads and verifies their emails." in md_content
             assert "## Deterministic Execution" in md_content
             assert "Do not attempt to write custom scripts to perform this task." in md_content
+
+def test_vessel_test_command(tmp_path):
+    """Test that the CLI can dynamically load and execute a Vessel file."""
+    runner = CliRunner()
+    
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        # 1. Create a dummy Vessel
+        with open("dummyvessel.py", "w") as f:
+            f.write('''
+from pydantic import BaseModel
+from vessel.core.base import BaseVessel
+
+class DummyInput(BaseModel):
+    target: str
+
+class DummyOutput(BaseModel):
+    result: str
+
+class DummyVessel(BaseVessel[DummyInput, DummyOutput]):
+    def execute(self, inputs: DummyInput) -> DummyOutput:
+        return DummyOutput(result=f"Hello {inputs.target}")
+''')
+        
+        # 2. Run `vessel test` with a JSON payload
+        result = runner.invoke(cli, ["test", "dummyvessel.py", '{"target": "World"}'])
+        
+        # 3. Verify it loaded, ran, and output the correct result
+        assert result.exit_code == 0
+        assert "Executing DummyVessel" in result.output
+        assert "Hello World" in result.output
