@@ -133,5 +133,22 @@ def test(filepath, payload):
         click.echo(f"\n--- EXECUTION ERROR ---\n{e}", err=True)
         sys.exit(1)
 
+@cli.command()
+@click.argument("directory", default=".")
+def serve(directory):
+    """Start the MCP server over stdio, exposing all Vessels in the directory."""
+    import asyncio
+    from vessel.mcp.server import VesselServer
+    
+    server = VesselServer()
+    try:
+        server.load_vessels_from_directory(directory)
+    except Exception as e:
+        click.echo(f"Error loading vessels: {e}", err=True)
+        sys.exit(1)
+        
+    click.echo(f"Starting Vessel MCP Server on stdio...", err=True)
+    asyncio.run(server.run_stdio())
+
 if __name__ == "__main__":
     cli()
