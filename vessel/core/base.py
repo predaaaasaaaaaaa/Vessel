@@ -1,5 +1,8 @@
 import abc
 import time
+import json
+import tempfile
+from pathlib import Path
 from typing import Any, Generic, TypeVar, Type, get_args
 
 from loguru import logger
@@ -18,10 +21,24 @@ class BaseVessel(Generic[InputType, OutputType], abc.ABC):
     """
 
     def __init__(self):
-        self._circuit_failure_count = 0
-        self._circuit_open_until = 0.0
         self._circuit_failure_threshold = 3
         self._circuit_recovery_time = 3600  # 1 hour
+        # Persist circuit breaker state across independent CLI executions
+        self._cb_state_file = Path(tempfile.gettempdir()) / f"vessel_cb_{self.__class__.__name__}.json"
+
+    def _get_cb_state(self) -> dict:
+        if self._cb_state_file.exists():
+            try:
+                return json.loads(self._cb_state_file.read_text())
+            except Exception:
+                pass
+        return {"failure_count": 0, "open_until": 0.0}
+
+    def _save_cb_state(self, state: dict):
+        try:
+            self._cb_state_file.write_text(json.dumps(state))
+        except Exception as e:
+            logger.warning(f"Could not save circuit breaker state: {e}")
 
     @abc.abstractmethod
     def execute(self, inputs: InputType) -> OutputType:
@@ -63,7 +80,8 @@ class BaseVessel(Generic[InputType, OutputType], abc.ABC):
         Handles validation, execution tracing, retries, and circuit breaking natively.
         """
         # Circuit Breaker Check
-        if time.time() < self._circuit_open_until:
+        cb_state = self._get_cb_state()
+        if time.time() < cb_state["open_until"]:
             logger.error(f"Circuit Breaker open for {self.__class__.__name__}. Rejecting execution.")
             raise CircuitBreakerTripped(self.__class__.__name__)
 
@@ -80,16 +98,19 @@ class BaseVessel(Generic[InputType, OutputType], abc.ABC):
         logger.info(f"Starting execution of {self.__class__.__name__}...")
         try:
             result = self._execute_with_retries(inputs)
-            self._circuit_failure_count = 0  # Reset on success
+            if cb_state["failure_count"] > 0:
+                cb_state["failure_count"] = 0
+                self._save_cb_state(cb_state)
             logger.info(f"Successfully executed {self.__class__.__name__}.")
             return result
         except Exception as e:
-            self._circuit_failure_count += 1
-            if self._circuit_failure_count >= self._circuit_failure_threshold:
+            cb_state["failure_count"] += 1
+            if cb_state["failure_count"] >= self._circuit_failure_threshold:
                 logger.error(
                     f"Circuit Breaker tripped for {self.__class__.__name__} after "
-                    f"{self._circuit_failure_count} consecutive run failures."
+                    f"{cb_state['failure_count']} consecutive run failures."
                 )
-                self._circuit_open_until = time.time() + self._circuit_recovery_time
+                cb_state["open_until"] = time.time() + self._circuit_recovery_time
+            self._save_cb_state(cb_state)
             raise
 
