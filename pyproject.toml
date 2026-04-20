@@ -1,0 +1,31 @@
+[project]
+name = "vessel"
+version = "0.1.0"
+description = "A framework for Deterministic, Self-Healing, and Hot-Swappable 'Fat Skills' for AI agents."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.13.2",
+    "mcp>=1.27.0",
+    "loguru>=0.7.3",
+    "click>=8.1.7",
+    "tenacity>=9.0.0",
+]
+
+[project.scripts]
+vessel = "vessel.cli.main:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
+    "ruff>=0.3.0",
+    "mypy>=1.9.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.mypy]
+strict = true
