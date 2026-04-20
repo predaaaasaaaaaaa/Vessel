@@ -2,14 +2,14 @@ import pytest
 from pydantic import BaseModel, ValidationError
 from vessel.core.base import BaseVessel
 
-class TestInput(BaseModel):
+class MockInput(BaseModel):
     target_name: str
 
-class TestOutput(BaseModel):
+class MockOutput(BaseModel):
     status: str
     attempts_taken: int
 
-class FlakyVessel(BaseVessel[TestInput, TestOutput]):
+class FlakyVessel(BaseVessel[MockInput, MockOutput]):
     """
     A mock Vessel that simulates a transient failure.
     It will fail twice before succeeding on the third attempt.
@@ -18,18 +18,18 @@ class FlakyVessel(BaseVessel[TestInput, TestOutput]):
         super().__init__()
         self.attempts = 0
 
-    def execute(self, inputs: TestInput) -> TestOutput:
+    def execute(self, inputs: MockInput) -> MockOutput:
         self.attempts += 1
         if self.attempts < 3:
             raise ValueError("Simulated transient network error")
-        return TestOutput(status=f"Success for {inputs.target_name}", attempts_taken=self.attempts)
+        return MockOutput(status=f"Success for {inputs.target_name}", attempts_taken=self.attempts)
 
 def test_vessel_successful_execution_with_retries():
     """Test that the Vessel automatically retries and succeeds."""
     vessel = FlakyVessel()
     
     # We call .run() which is the Harness-facing wrapper that provides retries/validation
-    inputs = TestInput(target_name="Alpha")
+    inputs = MockInput(target_name="Alpha")
     result = vessel.run(inputs)
     
     assert result.status == "Success for Alpha"
