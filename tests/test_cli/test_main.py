@@ -17,9 +17,11 @@ def test_vessel_create_wizard(tmp_path):
         assert "The Next.js of Agentic Skills" in result.output
         assert "Created leadgenvessel.py" in result.output
         assert "Created LeadGenVessel_SKILL.md" in result.output
+        assert "Created test_leadgenvessel.py" in result.output
         
         assert os.path.exists("leadgenvessel.py")
         assert os.path.exists("LeadGenVessel_SKILL.md")
+        assert os.path.exists("test_leadgenvessel.py")
         
         with open("leadgenvessel.py", "r") as f:
             content = f.read()
@@ -36,6 +38,13 @@ def test_vessel_create_wizard(tmp_path):
             assert "Searches the web for SaaS leads and verifies their emails." in md_content
             assert "## Agent Instructions: How to Use This Skill" in md_content
             assert "python leadgenvessel.py '<json_payload>'" in md_content
+            assert "Self-Healing Protocol" in md_content
+            assert "VesselUpdater" in md_content
+
+        with open("test_leadgenvessel.py", "r") as f:
+            test_content = f.read()
+            assert "from leadgenvessel import LeadGenVessel" in test_content
+            assert "def test_leadgenvessel():" in test_content
 
 def test_vessel_test_command(tmp_path):
     """Test that the CLI can dynamically load and execute a Vessel file."""
