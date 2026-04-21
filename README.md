@@ -24,7 +24,7 @@ If you've built AI Agents, you know the pain:
 
 LLMs are brilliant reasoning engines, but they are **terrible execution environments**.
 
-## The Solution: "Thin Harness + Fat Skill"
+## The Solution (V1): "Thin Harness + Fat Skill"
 
 **Vessel** is a framework that fundamentally changes how Agents interact with the real world. 
 
@@ -45,12 +45,13 @@ vessel create
 The stunning, interactive CLI will ask you what you want to build.
 
 2. **The Magic Output:**
-Vessel instantly generates two files:
+Vessel instantly generates:
 *   `leadgenvessel.py`: A robust, self-healing Python script (the "Fat Skill").
+*   `test_leadgenvessel.py`: An automated test suite for your skill.
 *   `LeadGenVessel_SKILL.md`: The exact instruction manual your Agent needs.
 
 3. **Deploy to your Agent:**
-Drag and drop those two files into your OpenClaw or Hermes workspace. The `.md` file tells the Agent exactly how to use the `.py` script via the terminal. **100% portable. Zero servers required.**
+Drag and drop those files into your OpenClaw or Hermes workspace. The `.md` file tells the Agent exactly how to use the `.py` script via the terminal. **100% portable. Zero servers required.**
 
 ---
 
@@ -92,6 +93,27 @@ class WeatherVessel(BaseVessel[WeatherInput, WeatherOutput]):
 
 ---
 
+## 🚀 V2: Autonomous Self-Healing & Pipelines
+
+Vessel V2 elevates the framework from a set of reliable tools to an **Autonomous Self-Healing System**. 
+
+### 1. LLM Architect (`vessel config`)
+Vessel can now write the code for you. 
+Run `vessel config` to securely store your OpenAI API key locally. When you run `vessel create`, Vessel's internal "Lead Agentic Architect" prompt will generate the full, production-ready python code, tests, and documentation automatically.
+
+### 2. Multi-Agent Pipelines (`VesselPipeline`)
+Don't build monoliths. V2 introduces `VesselPipeline`, allowing you to compose dozens of isolated sub-vessels (e.g., `ScraperVessel` -> `AnalyzerVessel` -> `DrafterVessel`) into a single, unified skill for your Agent. If step 3 fails, only step 3 retries.
+
+### 3. Safe Self-Evolution (`VesselUpdater` & `VesselSandbox`)
+What happens when an API changes and the python script breaks?
+With V2, your Agent doesn't need you to fix it. The auto-generated `SKILL.md` instructs the Agent to use the built-in **`VesselUpdater`** Meta-Skill.
+1. The Agent proposes a code fix.
+2. The `VesselSandbox` intercepts it, creates a backup, and patches the file in an isolated environment.
+3. It automatically runs the `pytest` suite. 
+4. If the tests pass, the fix is deployed. If they fail, it rolls back instantly. **Your Agent can write its own code, but it can never break production.**
+
+---
+
 ## 🔌 The MCP Server (Optional)
 
 Do you use Claude Desktop or an Agent that supports the **Model Context Protocol (MCP)**? 
@@ -104,13 +126,19 @@ vessel serve ./my_skills_directory
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Upgrading
 
 ```bash
 # Requires Python >= 3.11
 pip install vessel
 ```
 *(Or use `uv` for lightning-fast installation!)*
+
+**Zero-Friction Updates:**
+When a new version of Vessel drops on GitHub, simply run:
+```bash
+vessel update
+```
 
 ---
 
