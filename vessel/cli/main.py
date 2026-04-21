@@ -3,6 +3,7 @@ import sys
 import json
 import click
 import inspect
+import subprocess
 import importlib.util
 from pydantic import ValidationError
 from vessel.core.base import BaseVessel
@@ -12,6 +13,8 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.syntax import Syntax
 from rich.prompt import Prompt
+
+from vessel.cli.config import get_api_key, get_config, save_config
 
 # The Monochromatic Purple Theme Hex Palette
 PRIMARY = "#9d4edd"    # Deep Electric Purple (Logos, Borders)
@@ -118,6 +121,50 @@ def print_logo():
 def cli():
     """Vessel CLI - The Next.js of Agentic Skills."""
     pass
+
+@cli.command()
+def config():
+    """Configure your OpenAI/LLM API Key."""
+    print_logo()
+    console.print(f"[{SECONDARY}]Vessel uses an LLM under the hood to automatically architect robust Fat Skills.[/{SECONDARY}]")
+    console.print(f"[{SECONDARY}]Your API key is saved locally in ~/.vessel/config.json and is never shared.[/{SECONDARY}]\n")
+    
+    current_key = get_api_key()
+    if current_key:
+        console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Current OpenAI API Key: sk-...{current_key[-4:]}[/{PROMPT}]\n")
+        
+    console.print(f"[{PROMPT}]?[/{PROMPT}] [{SECONDARY}]Enter your OpenAI API Key (leave blank to keep current):[/{SECONDARY}]")
+    new_key = Prompt.ask(f"[{MUTED}]❯[/{MUTED}] ", password=True)
+    
+    if new_key.strip():
+        cfg = get_config()
+        cfg["openai_api_key"] = new_key.strip()
+        save_config(cfg)
+        console.print(f"\n[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]API Key saved successfully![/{PROMPT}]")
+    else:
+        console.print(f"\n[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]No changes made.[/{PROMPT}]")
+
+@cli.command()
+def update():
+    """Upgrade Vessel to the latest version from GitHub."""
+    print_logo()
+    console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Updating Vessel to the latest version from GitHub...[/{PROMPT}]")
+    
+    try:
+        # Uses the exact python executable running this CLI to prevent environment conflicts
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "git+https://github.com/predaaaasaaaaaaa/Vessel.git"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Successfully updated Vessel![/{PROMPT}]")
+        else:
+            console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Failed to update Vessel:\n{result.stderr}[/{PROMPT}]")
+            sys.exit(1)
+    except Exception as e:
+        console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Error during update: {e}[/{PROMPT}]")
+        sys.exit(1)
 
 @cli.command()
 def create():
