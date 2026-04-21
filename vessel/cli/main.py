@@ -15,6 +15,7 @@ from rich.syntax import Syntax
 from rich.prompt import Prompt
 
 from vessel.cli.config import get_api_key, get_config, save_config
+from vessel.cli.llm import generate_vessel_code
 
 # The Monochromatic Purple Theme Hex Palette
 PRIMARY = "#9d4edd"    # Deep Electric Purple (Logos, Borders)
@@ -187,22 +188,37 @@ def create():
     md_filename = f"{name}_SKILL.md"
     test_filename = f"test_{module_name}.py"
     
-    # 3. Write the robust Python boilerplate
+    api_key = get_api_key()
+    if api_key:
+        console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]LLM API Key detected. Architecting autonomous pipeline...[/{PROMPT}]")
+        try:
+            generated = generate_vessel_code(api_key, name, description)
+            py_content = generated["python_code"]
+            test_content = generated["test_code"]
+            md_content = generated["markdown_docs"]
+        except Exception as e:
+            console.print(f"[{PRIMARY}]✖[/{PRIMARY}] [{PROMPT}]Failed to generate via LLM: {e}. Falling back to templates.[/{PROMPT}]")
+            py_content = PY_TEMPLATE.format(name=name, description=description)
+            test_content = TEST_TEMPLATE.format(name=name, module_name=module_name)
+            md_content = MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename, test_filename=test_filename)
+    else:
+        py_content = PY_TEMPLATE.format(name=name, description=description)
+        test_content = TEST_TEMPLATE.format(name=name, module_name=module_name)
+        md_content = MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename, test_filename=test_filename)
+    
+    # Write the robust Python boilerplate
     with open(py_filename, "w") as f:
-        f.write(PY_TEMPLATE.format(name=name, description=description))
-        
+        f.write(py_content)
     console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {py_filename}[/{PROMPT}]")
     
-    # 4. Write the automated test suite
+    # Write the automated test suite
     with open(test_filename, "w") as f:
-        f.write(TEST_TEMPLATE.format(name=name, module_name=module_name))
-        
+        f.write(test_content)
     console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {test_filename}[/{PROMPT}]")
     
-    # 5. Write the SKILL.md for the Agent
+    # Write the SKILL.md for the Agent
     with open(md_filename, "w") as f:
-        f.write(MD_TEMPLATE.format(name=name, description=description, py_filename=py_filename, test_filename=test_filename))
-        
+        f.write(md_content)
     console.print(f"[{PRIMARY}]✦[/{PRIMARY}] [{PROMPT}]Created {md_filename}[/{PROMPT}]")
     console.print(f"\n[{SECONDARY}]Vessel ready for Agentic deployment.[/{SECONDARY}]\n")
 
