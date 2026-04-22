@@ -34,6 +34,30 @@ When an Agent uses a Vessel, it doesn't write code. It doesn't worry about failu
 
 ---
 
+## 🏗️ Project Architecture
+
+Vessel is designed around a strict separation of concerns, providing both a robust Python framework and a zero-friction Developer Experience (DX).
+
+```text
+vessel/
+├── core/                # The execution engine
+│   ├── base.py          # BaseVessel: Retries, circuit-breaking, validation
+│   ├── exceptions.py    # Custom errors (e.g., CircuitBreakerTripped)
+│   └── pipeline.py      # VesselPipeline: Orchestrates multiple sub-vessels
+├── mcp/                 # The Agentic Bridge
+│   ├── adapter.py       # Auto-translates Pydantic schemas to MCP Tool JSON
+│   └── server.py        # Exposes local Vessels to any MCP-compatible agent
+├── evolution/           # The Self-Healing Sandbox
+│   ├── sandbox.py       # Isolated CI/CD pipeline (Backup, Patch, Test, Rollback)
+│   └── updater.py       # VesselUpdater: The Meta-Skill Agents use to fix bugs
+└── cli/                 # The Next.js-style DX
+    ├── main.py          # The interactive wizard and test runner (`vessel create`, `vessel test`)
+    ├── llm.py           # The "Lead Agentic Architect" system prompt for autonomous generation
+    └── config.py        # Secure API key management (`vessel config`)
+```
+
+---
+
 ## ⚡️ For Beginners: Zero-Friction Creation
 
 You don't need to be a Python expert to build 100% reliable tools.
